@@ -1,0 +1,23 @@
+[0] Config.pm:329> INFO - This is Biber 2.22
+[0] Config.pm:332> INFO - Logfile is 'main.blg'
+[65] biber:342> INFO - === Thu Oct 15, 2026, 14:45:11
+[79] Biber.pm:421> INFO - Reading 'main.bcf'
+[167] Biber.pm:1002> INFO - Found 44 citekeys in bib section 0
+[182] Biber.pm:4487> INFO - Processing section 0
+[192] Biber.pm:4680> INFO - Looking for bibtex file 'abbrev0.bib' for section 0
+[210] bibtex.pm:1713> INFO - LaTeX decoding ...
+[630] bibtex.pm:1519> INFO - Found BibTeX data source 'abbrev0.bib'
+[2432] Biber.pm:4680> INFO - Looking for bibtex file 'main.bib' for section 0
+[2434] bibtex.pm:1713> INFO - LaTeX decoding ...
+[2501] bibtex.pm:1519> INFO - Found BibTeX data source 'main.bib'
+[2926] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
+[2926] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[2926] Biber.pm:4307> INFO - Sorting list 'nty/global//global/global/global' of type 'entry' with template 'nty' and locale 'en-US'
+[2926] Biber.pm:4313> INFO - No sort tailoring available for locale 'en-US'
+[2977] bbl.pm:676> INFO - Writing 'main.bbl' with encoding 'UTF-8'
+[3000] bbl.pm:779> INFO - Output to main.bbl
+[3001] Biber.pm:132> WARN - legacy month field '8~15--18,' in entry 'Beu22' is not an integer - this will probably not sort properly.
+[3001] Biber.pm:132> WARN - legacy month field '4~23--27,' in entry 'CD23' is not an integer - this will probably not sort properly.
+[3001] Biber.pm:132> WARN - legacy year field 'In preparation' in entry 'BNA26' is not an integer - this will probably not sort properly.
+[3001] Biber.pm:132> WARN - I didn't find a database entry for 'Bea+90' (section 0)
+[3001] Biber.pm:134> INFO - WARNINGS: 4

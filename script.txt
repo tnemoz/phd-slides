@@ -1,0 +1,343 @@
+PhD DEFENSE — SCRIPT (keywords only)
+Target: 45 min. [mm:ss] = cumulative time at END of slide. [cN] = click N.
+
+==============================================================================
+TITLE                                                                  [00:30]
+==============================================================================
+- thanks jury, audience
+- supervisors: Romain Alléaume, Peter Brown
+- "Computational models in quantum cryptography"
+
+==============================================================================
+INTRODUCTION
+==============================================================================
+
+--- What is cryptography? ------------------------------------------- [02:30]
+[c1] Alice → Bob: "Meet at 9", plain
+     Eve on the channel: reads everything
+[c2] Enc_k / Dec_k, shared secret key k
+     Eve: ciphertext only → looks like noise
+[c3] goals: confidentiality, integrity, authenticity…
+[c4] Kerckhoffs: protocol public, only key secret
+[c5] security = always relative to a MODEL of Eve
+[c6] information-theoretic: unbounded Eve
+[c7] computational: bounded Eve + hardness assumption (factoring)
+[c8] THIS THESIS: limits of quantum constructions → where quantum is worth it
+
+--- A brief history of (post-)quantum crypto ------------------------- [04:30]
+[c1] 1983–84: Wiesner money, BB84 QKD → information-theoretic
+[c2] 1994: Shor → RSA, ECC broken by a quantum computer
+[c3] 2016: NIST PQC competition (standards 2024)
+[c4] 2022: Rainbow (Beullens, laptop, weekend), SIKE (Castryck–Decru, ~1h) broken
+     → PQ assumptions young, not all trustworthy
+[c5] today: QKD discouraged by agencies (NCSC, ANSSI)
+[c6] why: info-theoretic security expensive — hardware, low rates, short distances
+[c7] 2018: PRS (JLS18) = quantum + computational
+     trend: accept computational assumptions to fix those costs
+
+--- Impagliazzo's worlds --------------------------------------------- [06:00]
+[c1] worlds = how many assumptions
+     Algorithmica: nothing hard; Minicrypt: OWFs; Cryptomania: public key
+     classical: key exchange, MPC → Cryptomania
+     short key / long message → Minicrypt (PRG); long key → OTP, Algorithmica
+[c2] add quantum resources → tasks move DOWN
+     key exchange, short-key encryption → Algorithmica (QKD)
+     MPC → Minicrypt (OWFs suffice), certified deletion
+[c3] new world: Microcrypt, below OWFs
+     PRS can exist even without quantum OWFs (Kre21)
+     → PRS = central object of the second half
+
+--- Outline of this talk (all boxes) --------------------------------- [06:45]
+- 3 chapters, 3 questions
+- Ch3: QRNG — how much secure randomness in a state? (information-theoretic)
+- Ch4: real PRS — do complex amplitudes matter?
+- Ch5: PRCS — can PRS travel on light?
+- braces: true randomness / pseudorandomness
+
+==============================================================================
+CHAPTER 3 — QUANTUM RANDOM NUMBER GENERATION
+==============================================================================
+
+--- Outline (Ch3) ---------------------------------------------------- [07:00]
+- how much secure randomness in a quantum state?
+
+--- Problem setup (41 clicks — keep a steady pace) ------------------- [12:00]
+[c1]  source + measurement device, POVM {M_x}
+[c2]  source emits ρ_A
+[c3]  outcome X
+[c4]  want X close to uniform
+[c5]  example: ρ_A = ¼|0⟩⟨0| + ¾|1⟩⟨1|
+[c6]  measure computational basis
+[c7]  X ~ (¼, ¾)
+[c8]  not uniform ✗
+[c9]  Hadamard basis instead
+[c10] X uniform ✓
+[c11] but: Eve may know something about the source
+[c12] Eve's system E, joint state ρ_AE
+[c13] A entangled with E
+[c14] e.g. purification ½|00⟩ + (√3/2)|11⟩
+[c15] classical-quantum state ρ_XE, Eve holds ψ_0, ψ_1
+[c16] Eve guesses X with prob ¾
+[c17] secret ✗
+[c18] be clever?
+[c19] POVMs!
+[c20] trivial POVM {½ I, ½ I}: pure coin flip
+[c21] ρ_XE = ½ I ⊗ σ_E: independent of Eve
+[c22] uniform ✓, secret ✓ … too good?
+[c23] how does the device implement it?
+[c24] Naimark: measure 1st qubit of a Bell pair
+[c25] the 2nd qubit = device's internal system
+[c26] call it B
+[c27] B may be entangled with Eve
+[c28] ρ_BE = Bell state
+[c29] Eve knows X perfectly
+[c30] secret ✗
+[c31] back to the general picture
+[c32] entanglement A–B as well
+[c33] how much randomness against such an Eve?
+[c34] minimize Eve's uncertainty over all ρ_ABE
+[c35] subject to:
+[c36] source produces ρ_A
+[c37] device implements {M_x}
+[c38] uncertainty = conditional entropy H(X|E)
+[c39] Tr_BE ρ_ABE = ρ_A
+[c40] also min over PVMs {P_x} with M_x = Tr_B[P_x(I ⊗ ρ_B)]
+[c41] = randomness of (ρ_A, {M_x}) against the most general Eve
+
+--- Problem statement ------------------------------------------------ [13:30]
+[c1]  usually: randomness hand-waved with entropies
+[c2]  ε-secure randomness: ρ_XE ≈_ε uniform ⊗ ρ_E
+[c3]  uniform
+[c4]  independent of Eve
+[c5]  link to sandwiched Rényi entropies H_α (Dup23)
+[c6]  min over Eve = randomness of ρ_A AND {M_x}
+[c7]  sup over {M_x} → MAXIMAL randomness of the source ρ_A alone
+[c8]  max-min problem
+[c9]  dim E unbounded
+[c10] all Naimark extensions
+[c11] dim B unbounded
+[c12] → not trivial
+
+--- Reductions ------------------------------------------------------- [15:00]
+[c1] the full problem
+[c2] Eve: best she can do = purify ρ_AB
+[c3] → pure state ψ_ABE
+[c4] Alice: restrict to rank-1 extremal POVMs
+[c5] (highlighted)
+[c6] technical result: rank-1 extremal ⇒ ρ_XE independent of B
+[c7] → B and min over Naimark disappear
+[c8] → only need the best rank-1 extremal POVM
+
+--- A simple case ---------------------------------------------------- [17:30]
+[c1] qubit, pure state ρ_A = |0⟩⟨0|
+[c2] tetrahedral POVM, 4 outcomes, extremal
+[c3] distribution (½, ⅙, ⅙, ⅙) → H ≈ 1.79 bits
+[c4] = SIC-POVM
+[c5] flip it: (0, ⅓, ⅓, ⅓) → log 3 ≈ 1.58: worse
+[c6] uniform via ½|±⟩⟨±| twice: NOT extremal → only 1 bit
+     (Eve knows the internal coin)
+[c7] key result: extremal rank-1 POVMs dense in rank-1 POVMs
+[c8] animation: extremal POVMs → uniform → approach 2 bits
+     2 bits from 1 qubit: d_A² outcomes
+
+--- Main result ------------------------------------------------------ [18:30]
+[c1] ρ_A, ε
+[c2] ℓ bits ε-secure from ρ_A^⊗n: finite-size formula, Rényi entropies
+     optimization over α: 1D, bisection (backup "Computing the optimal α")
+[c3] how useful a given source is for QRNG
+[c4] asymptotic rate 2 log d_A − H(A)
+     pure state → 2 log d_A; maximally mixed → log d_A
+
+--- A caveat: discontinuities ---------------------------------------- [20:00]
+[c1] optimum approached by extremal N_δ → N_0 = {1/d_A |y⟩⟨y|}_{x,y}
+[c2] limit N_0 not extremal: drop by log d_A bits
+[c3] attack: device implements N_0 instead of N_δ, undetectable as δ → 0
+[c4] continuous on rank-1 extremal POVMs and on full-rank POVMs
+     (backup "Where is the intrinsic randomness continuous?")
+[c5] explicit optimal point known in all dimensions (backup "optimal POVM for qubits")
+[c6] open: where are all discontinuities? optimum far from them?
+- transition: from true randomness → pseudorandomness
+
+==============================================================================
+CHAPTER 4 — REAL-VALUED PSEUDORANDOM STATES
+==============================================================================
+
+--- Outline (Ch4) ---------------------------------------------------- [20:15]
+- do complex amplitudes increase the security of PRS?
+
+--- Pseudorandom quantum states (PRS) -------------------------------- [22:15]
+[c1] keyed family |ψ_k⟩, d-dimensional
+[c2] efficiently preparable from k
+[c3] indistinguishable from Haar random, even with t = poly copies
+[c4] building block for Microcrypt
+[c5] typical proof, binary phase states, f_k qPRF
+[c6] hybrid 1: qPRF → truly random f (negl)
+     hybrid 2: random binary phases vs Haar: ε(t,d), statistical
+     advantage ≤ negl + ε(t,d) → ε limits the number of copies
+
+--- Real versus complex amplitudes ----------------------------------- [23:30]
+[c1] ε-approximate t-design: t-copy average close to Haar average ρ_U
+[c2] ε = the quantity of interest
+[c3] best known: real Θ(t²/d), complex Θ(t/d)
+     binary phases = real; random phases = complex
+[c4] fundamental limit for real designs?
+[c5] yes
+
+--- Step 1: best design with fixed imaginarity ----------------------- [24:30]
+[c1] ρ_O = twirl of |0⟩⟨0|^⊗t over the orthogonal group
+[c2] any ensemble S of real states
+[c3] distance(ρ_S, ρ_U) ≥ distance(ρ_O, ρ_U)
+     why: twirl both by O^⊗t — ρ_U fixed, ρ_S → ρ_O, norm can't increase
+[c4] → ½‖ρ_O − ρ_U‖ = best possible ε for real states
+     → only ONE state to study
+
+--- Step 2: diagonalizing with symmetries ---------------------------- [26:00]
+[c1] Schur: symmetries ⇒ eigenvalues constant on blocks
+     more symmetries → larger blocks
+[c2] both states on the symmetric subspace
+[c3] complex: invariant under every U^⊗t → one single block
+     ρ_U = projector / dimension
+[c4] real: only O^⊗t → fewer symmetries → smaller blocks
+[c5] goal: find the blocks and their eigenvalues λ_k
+     → trace distance directly from eigenvalue differences (states commute)
+
+--- Finding the blocks ----------------------------------------------- [27:15]
+[c1] want: subspaces invariant under all O^⊗t
+[c2] t = 2, |Φ⟩ = maximally entangled state
+[c3] O ⊗ O |Φ⟩ = |Φ⟩ (O Oᵀ = I), not true for all U ⊗ U
+[c4] Φ = its own block for ρ_O, only a piece of ρ_U's single block
+     (aside: ⟨Φ|ρ_O|Φ⟩ = 1/d vs ≈ 2/d² for Haar → the distinguishing signal)
+[c5] larger t: many blocks, many sizes, huge dimension
+[c6] how to find them?
+
+--- Our approach: from tensors to polynomials ------------------------ [29:30]
+[c1] symmetric tensors ≅ homogeneous polynomials, degree t, d variables
+     |ψ⟩^⊗t ↦ (Σ ψ_i X_i)^t
+[c2] dictionary:
+[c3] Bombieri norm = usual norm
+[c4] O^⊗t ↦ rotation of the variables X → OᵀX
+[c5] blocks = harmonic decomposition (CW68)
+     harmonic = Laplacian zero; d = 3: spherical harmonics
+     ‖X‖² = Σ X_i² rotation-invariant (= Φ for t = 2)
+[c6] eigenvalue: tr(ρ_O Π_k) = λ_k · tr(Π_k)
+[c7] tr(Π_k) = dimension of the harmonic space (known)
+[c8] (substituted)
+[c9] tr(ρ_O Π_k) = Bombieri norm of the projection of P_δ (one polynomial!)
+[c10] ‖Π_k P_δ‖² = λ_k · dim
+[c11] → closed form: Gegenbauer polynomials (backup "Eigenvalues of ρ(δ)")
+
+--- Main result: real amplitudes cost a factor t --------------------- [30:15]
+[c1] trace distance ≈ t(t−1)/(2d) (small t)
+     → ε = Ω(t²/d) for ANY real ensemble, matches known constructions: tight
+     constant distance at t ~ √d
+[c2] complex amplitudes necessary to reach Θ(t/d)
+
+--- From designs to pseudorandom states? ----------------------------- [31:45]
+[c1] optimal distinguisher: project onto blocks with λ ≤ Haar eigenvalue
+[c2] works for ANY real ensemble (P invariant under O^⊗t)
+[c3] but bounds ε, not PRS security: need an EFFICIENT P
+[c4] open: implement P in poly(t, log d, 1/η)?
+[c5] route: Schur transform (Bur+25) + monomials → harmonics basis change
+[c6] conjecture yes → real PRS insecure beyond ~√d copies
+
+--- Byproducts ------------------------------------------------------- [32:30]
+[c1] exact designs: orthogonal twirl, imaginarity ~ Beta law
+[c2] imaginarity testing needs Ω(√d) copies (backup "Imaginarity testing")
+[c3] optimal imaginarity estimation, fewer copies than HBK25
+[c4] real state estimation: PGM optimal, infidelity ~ (d−1)/(4t) vs (d−1)/t complex
+- transition: PRS live in qudits — what about light?
+
+==============================================================================
+CHAPTER 5 — PSEUDORANDOM COHERENT STATES
+==============================================================================
+
+--- Outline (Ch5) ---------------------------------------------------- [32:45]
+- can PRS travel on light?
+
+--- Pseudorandom states meet optics ---------------------------------- [34:15]
+[c1] PRS: qudits, t copies
+[c2] communication = light = coherent states, Poisson photon number
+[c3] displacements: no Haar measure (non-compact)
+[c4] what is a uniformly random coherent state?
+[c5] Arrazola–Lütkenhaus: one mode per basis state, amplitude α ψ_x
+
+--- Haar-random coherent states -------------------------------------- [35:45]
+[c1] average the mapped state over Haar ψ
+[c2] Poisson photon statistics
+[c3] N photons uniformly spread over d modes ≅ ρ_U with N copies
+[c4] mean photon number |α|² ↔ number of copies t
+[c5] PRCS: normalized (1 photon), efficient, pseudorandom for poly(λ) intensity t
+
+--- A PRCS construction ---------------------------------------------- [37:15]
+[c1] qPRF to p-th roots of unity → phases on 2^λ modes = PRCS
+[c2] hybrid 1: qPRF → random function, negl
+[c3] hybrid 2: random function → independent random phases, small for large p
+[c4] hybrid 3: random phases → Haar coherent, t²/(d−1)
+[c5] each mode independent: constant depth
+[c6] but 2^λ modes: practical limitation
+
+--- An application: a riddle for children ---------------------------- [38:30]
+[c1]  Alice, Bob, untrusted courier, no shared key
+[c2]  Alice locks with A
+[c3]  courier → Bob
+[c4]  arrives locked
+[c5]  Bob adds lock B
+[c6]  back to Alice
+[c7]  two locks
+[c8]  Alice removes A
+[c9]  → Bob
+[c10] only B left
+[c11] Bob opens
+[c12] message exchanged without any shared key
+
+--- The (coherent) double-lock protocol ------------------------------ [40:30]
+[c1] locks must commute — one-time pad?
+[c2] XOR the three messages → m: broken
+[c3] Alice sends t_A copies of a PRS = quantum public key
+[c4] Bob encodes m as phases x·m, returns 1 copy
+     Alice undoes f_k, Hadamard → |m⟩
+     secure: t_A = poly, t_B = 1 (Col23, AGY25)
+[c5] coherent version: |β| ≤ |α| models losses
+[c6] … and splitting the public key among many Bobs
+[c7] public-key functionality from PRFs only — impossible classically (Impagliazzo–Rudich)
+[c8] caveat: needs an authenticated quantum channel
+     (backup "Comparison with other key distribution methods")
+
+--- Security and key rates ------------------------------------------- [41:45]
+[c1] guessing probability bound, n bits per round
+     exponential in |α||β| → weak signals only, few photons
+     (formulas: backup "Key rate ingredients")
+[c2] key rate vs distance, n = 1, 2, 3
+     dashed: signal split among 100 users → still non-zero
+     0.2 dB/km, 65 % detectors, dark counts 1e-8
+
+==============================================================================
+CONCLUSION
+==============================================================================
+
+--- Conclusion ------------------------------------------------------- [43:45]
+[c1] QRNG: maximal intrinsic randomness, closed form, all sandwiched Rényi, all POVMs
+     → simple benchmark for sources; open: discontinuities
+[c2] real designs: spectral decomposition → ε = Ω(t²/d) + byproducts
+     open: efficient distinguisher → bound on real PRS
+[c3] PRCS: Haar-random coherent states, definition, construction, QPKE many recipients
+     open: signal strength, authentication, number of modes
+- one-line message: quantum helps cryptography, once we know its limits
+
+--- Publications and activities -------------------------------------- [44:30]
+- 3 thesis papers (QRNG, real designs, PRCS) + master's paper + popular science
+- teaching: Qiskit hackathons; software: ncpoleon (with Peter)
+- THANK YOU
+
+==============================================================================
+BACKUP — question → slide
+==============================================================================
+- "explicit optimal POVM?"                → What does the optimal POVM for qubits look like?
+- "rank-1 really needed?"                 → Is having the POVM rank-1 necessary…
+- "continuity? noisy devices?"            → Where is the intrinsic randomness continuous?
+- "how to pick α?"                        → Computing the optimal α
+- "explicit eigenvalues?"                 → Eigenvalues of ρ(δ)
+- "imaginarity testing details?"          → Imaginarity testing
+- "key rate formula?"                     → Key rate ingredients
+- "vs PKE / SKE / QKD / other QPKE?"      → Comparison with other key distribution methods
+- "QCT chapter?"                          → The QCT model, then Forrelation in the QCT model

@@ -1,0 +1,6 @@
+\babel@toc {english}{}\relax 
+\beamer@sectionintoc {1}{Introduction}{2}{0}{1}
+\beamer@sectionintoc {2}{Quantum random number generation}{21}{0}{2}
+\beamer@sectionintoc {3}{Real-valued pseudorandom states}{101}{0}{3}
+\beamer@sectionintoc {4}{Pseudorandom coherent states}{151}{0}{4}
+\beamer@sectionintoc {5}{Conclusion}{189}{0}{5}

@@ -1,0 +1,965 @@
+% Number of frames of the Bloch sphere animation ("A simple case"), at least 1.
+% 216 for the final version (~8 min per pass); set it to 1 while working (~1.5 min per pass).
+\providecommand{\nframes}{128}
+
+\documentclass[aspectratio=169]{beamer}
+
+% Codage.  Ajuster en fonction de votre éditeur.  Supprimer avec LuaTeX.
+\usepackage[utf8]{inputenc}
+
+% Thème Beamer Télécom Paris.
+\mode<presentation>
+\usetheme[bodyframecount, slim]{tptng}
+\setbeamercolor{section in head/foot}{bg=tptred!20!white}
+\setbeamercolor{subsection in head/foot}{bg=gray!50!white}
+
+% Gestion des fontes.  Attention, le code à utiliser dépend du moteur TeX.
+\iftptusefontspec
+  \setmonofont{inconsolata}% Police monospace (p.ex. pour l'adresse mail).
+\else
+  \usepackage[T1]{fontenc}
+  \usepackage{inconsolata}% Police monospace (p.ex. pour l'adresse mail).
+\fi
+
+
+\usepackage[english]{babel}
+\usepackage[babel]{microtype}
+\usepackage[useregional]{datetime2}
+\usepackage[
+    sorting=nty,
+    style=authoryear,
+    maxcitenames=2,
+    natbib
+]{biblatex}
+\addbibresource{abbrev0.bib}
+\addbibresource{main.bib}
+\usepackage{xspace}
+\usepackage{amsmath}
+\usepackage{csquotes}
+\usepackage{amssymb}
+
+\usepackage{tikz}
+	\usetikzlibrary{arrows.meta, calc, decorations.pathmorphing, decorations.pathreplacing}
+\usepackage{blochsphere}
+\usepackage{pgfplots}
+	\pgfplotsset{compat=1.18}
+\usepackage[nobeards]{tikzpeople}
+
+% Needed to use nested=true for blochsphere
+\pgfdeclarelayer{back}%
+\pgfdeclarelayer{front}%
+\pgfsetlayers{back,main,front}%
+
+\usepackage{animate}
+\usepackage{pifont} % used for \ding
+\usepackage{array}
+\renewcommand*{\bibfont}{\scriptsize}
+
+\input{notations}
+
+% Small citations for crowded figures
+\newcommand{\scite}[1]{{\tiny\citep{#1}}}
+
+% Colors of Impagliazzo's worlds, taken from the thesis
+\definecolor{lowerband}{cmyk}{1, .1, 0.1, .3}
+\definecolor{middleband}{cmyk}{1, .1, 0.1, .5}
+\definecolor{higherband}{cmyk}{1, .1, 0.1, .7}
+\colorlet{microband}{tptred!85!black}
+
+% Locks for the riddle, taken from the Edinburgh talk
+\def\tikzlock#1#2{
+	\begin{scope}[shift={#1},scale=.5]
+	\begin{scope}
+		\clip (0, 1.1) rectangle (1, 1.6);
+		\draw[ultra thick] (0.5, 1.1) circle(0.3);
+	\end{scope}
+	\draw[ultra thick] (0.2, 1) -- (0.2, 1.1);
+	\draw[ultra thick] (0.8, 1) -- (0.8, 1.1);
+	\draw[rounded corners, ultra thick] (0, 0) rectangle (1, 1) {};
+	\node at (0.5, 0.5) {#2};
+	\end{scope}
+}
+\def\tikzopenlock#1#2{
+	\begin{scope}[shift={#1}, scale=.5]
+	\begin{scope}
+		\clip (0, 1.2) rectangle (1, 1.7);
+		\draw[ultra thick] (0.5, 1.2) circle(0.3);
+	\end{scope}
+	\draw[ultra thick] (0.2, 1) -- (0.2, 1.2);
+	\draw[rounded corners, ultra thick] (0, 0) rectangle (1, 1) {};
+	\node at (0.5, 0.5) {\footnotesize #2};
+	\end{scope}
+}
+
+% Roadmap of the talk: \roadmap{n} highlights chapter n (0 highlights nothing)
+\newcommand{\roadmapbox}[5]{% #1 chapter, #2 x position, #3 title, #4 question, #5 reference
+	\ifnum\roadmapcurrent=0
+		\tikzset{rmcur/.style={draw=black}}%
+	\else\ifnum\roadmapcurrent=#1
+		\tikzset{rmcur/.style={draw=tptred, fill=tptred!10, ultra thick}}%
+	\else
+		\tikzset{rmcur/.style={draw=gray!60, text=gray!80}}%
+	\fi\fi
+	\node[rmbox, rmcur] (ch#1) at (#2, 0) {\textbf{Chapter #1}\\[1ex]#3\\[1.5ex]\textit{#4}\\[1ex]{\scriptsize #5}};
+}
+\newcommand{\roadmap}[1]{%
+	\def\roadmapcurrent{#1}%
+	\begin{center}
+	\begin{tikzpicture}[rmbox/.style={draw, rounded corners, thick, text width=2.8cm, minimum height=3.6cm, align=center, anchor=north, font=\footnotesize}]
+        \roadmapbox{3}{1.6}{Quantum random number generation}{How much secure randomness is in a quantum state?}{(Nemoz, Anco and Brown, 2024)}
+        \roadmapbox{4}{5.0}{Real-valued pseudorandom states}{Do complex amplitudes increase the security of pseudorandom states?}{(Nemoz, Alléaume and Brown, 2026)}
+        \roadmapbox{5}{8.4}{Pseudorandom coherent states}{Can pseudorandom states travel on light?}{(Kuzaka, Nemoz and Alléaume, in preparation)}
+	\end{tikzpicture}
+	\end{center}
+}
+
+%------------------------------------------------------------------------------
+\title{Computational models in Quantum Cryptography}
+\subtitle{PhD defense}
+
+\author{Tristan Nemoz}
+\email{\sffamily Supervised by Romain Alléaume and Peter Brown}
+\institute{PhD defense}
+\date[2026-11-09]{\DTMdate{2026-11-09}}
+%------------------------------------------------------------------------------
+\newlength{\oneinch}
+	\setlength{\oneinch}{1in}
+
+% TODO: Uncomment when everything works fine
+% \AtBeginEnvironment{tikzpicture}{\tracinglostchars=0\relax}
+\begin{document}
+
+\maketitle
+
+%==============================================================================
+\section{Introduction}
+%==============================================================================
+\begin{frame}{What is cryptography?}
+	\centering
+	\begin{tikzpicture}[op/.style={draw, thick, rounded corners, fill=gray!15, font=\small, minimum height=.7cm}]
+		\node[alice, minimum width=1.1cm] (A) at (0, 0) {};
+		\node[bob, mirrored, minimum width=1.1cm] (B) at (11.6, 0) {};
+		\node[criminal, minimum width=1.1cm] (E) at (5.8, -1.1) {};
+		\node[below=1pt, font=\small] at (A.south) {Alice};
+		\node[below=1pt, font=\small] at (B.south) {Bob};
+		\draw[->, dashed, thick] (5.8, 0.2) -- (E.north);
+		\visible<1>{
+			\draw[->, thick] (0.9, 0.2) -- (10.7, 0.2) node[midway, above] {``Meet at 9''};
+			\node[right=3pt, align=left, font=\small] at (E.east) {Eve\\\textcolor{red}{reads everything}};
+		}
+		\visible<2->{
+			\node[op] (enc) at (2.5, 0.2) {$\mathsf{Enc}_\key$};
+			\node[op] (dec) at (9.1, 0.2) {$\mathsf{Dec}_\key$};
+			\draw[->, thick] (0.9, 0.2) -- (enc);
+			\draw[->, thick] (enc) -- (dec) node[midway, above] {\texttt{x7\#Qp!}};
+			\draw[->, thick] (dec) -- (10.7, 0.2);
+			\node[above=2pt, font=\scriptsize] at (enc.north) {``Meet at 9''};
+			\node[above=2pt, font=\scriptsize] at (dec.north) {``Meet at 9''};
+			\node[below=2pt, font=\small] at (enc.south) {secret key $\key$};
+			\node[below=2pt, font=\small] at (dec.south) {secret key $\key$};
+			\node[right=3pt, align=left, font=\small] at (E.east) {Eve\\only sees noise};
+		}
+	\end{tikzpicture}
+	\par
+	\begin{itemize}\small
+		\item<3-> Goals: confidentiality, integrity, authenticity\ldots
+		\item<4-> The protocol is public, only the key $\key$ is secret (Kerckhoffs' principle)
+		\item<5-> Security always holds against a model of Eve:
+		\begin{itemize}
+			\item<6-> \emph{information-theoretic}: Eve has unlimited computing power
+			\item<7-> \emph{computational}: Eve has a limited computing power and some problem is hard (e.g. factoring)
+		\end{itemize}
+		\item<8-> This thesis: explore the limits of quantum constructions, to see where quantum is worth it
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{A brief history of (post-)quantum cryptography}
+	\begin{center}
+	\begin{tikzpicture}[ev/.style={align=center, font=\scriptsize, text width=2.1cm}, yr/.style={font=\footnotesize\bfseries}]
+		\draw[-Latex, thick] (-0.1, 0) -- (13.2, 0);
+		\fill (1.05, 0) circle (2.5pt);
+		\node[yr, below] at (1.05, -0.1) {1983--84};
+		\node[ev, above] at (1.05, 0.2) {QKD \scite{BB84}, quantum money \scite{Wie83}: \textcolor{tptred}{information-theoretic}};
+		\visible<2->{
+			\fill (3.25, 0) circle (2.5pt);
+			\node[yr, above] at (3.25, 0.1) {1994};
+			\node[ev, below] at (3.25, -0.2) {Shor breaks RSA and ECC \scite{Sho97}};
+		}
+		\visible<3->{
+			\fill (5.45, 0) circle (2.5pt);
+			\node[yr, below] at (5.45, -0.1) {2016};
+			\node[ev, above] at (5.45, 0.2) {NIST post-quantum standardization};
+		}
+		\visible<7->{
+			\fill (7.65, 0) circle (2.5pt);
+			\node[yr, above] at (7.65, 0.1) {2018};
+            \node[ev, below] at (7.65, -0.2) {\textcolor{tptred}{Pseudorandom quantum states \scite{JLS18}: computational}};
+		}
+		\visible<4->{
+			\fill (9.85, 0) circle (2.5pt);
+			\node[yr, below] at (9.85, -0.1) {2022};
+			\node[ev, above] at (9.85, 0.2) {Rainbow, SIKE broken \scite{Beu22,CD23}};
+		}
+		\visible<5->{
+			\fill (12.05, 0) circle (2.5pt);
+			\node[yr, above] at (12.05, 0.1) {Today};
+			\node[ev, below] at (12.05, -0.2) {QKD discouraged \scite{NCSC,ANSSI}};
+		}
+	\end{tikzpicture}
+	\end{center}
+	\begin{itemize}\small
+		\item<6-> Information-theoretic security is expensive: dedicated hardware, low rates, short distances
+		\item<7-> New trend: accept computational assumptions to try to mitigate these problems
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Where can quantum help? Impagliazzo's worlds \scite{Imp95}}
+	\begin{center}
+	\begin{tikzpicture}[white, font=\scriptsize, box/.style={draw, thick, align=center, inner sep=3pt}]
+		\def\W{12.8}
+		% Bands
+		\fill[higherband] (0, 0) rectangle (\W, -1.5);
+		\fill[middleband] (0, -1.5) rectangle (\W, -2.6);
+		\fill<-2>[lowerband] (0, -2.6) rectangle (\W, -3.3);
+		\fill<3->[microband] (0, -2.6) rectangle (\W, -3.3);
+		\fill[lowerband] (0, -3.3) rectangle (\W, -5.6);
+		\draw[ultra thick] (2.4, -1.5) -- (\W, -1.5);
+		\draw[ultra thick] (2.4, -2.6) -- (\W, -2.6);
+		\draw<3->[ultra thick] (2.4, -3.3) -- (\W, -3.3);
+		% Worlds
+		\node[font=\footnotesize] at (1.0, -0.75) {Cryptomania};
+		\node[font=\footnotesize] at (1.0, -2.05) {Minicrypt};
+		\node<3->[font=\footnotesize] at (1.0, -2.95) {Microcrypt};
+		\node[font=\footnotesize] at (1.0, -4.45) {Algorithmica};
+		\draw[->, ultra thick] (2.4, -5.5) -- (2.4, -0.1);
+		\node[rotate=90, anchor=south] at (2.4, -2.8) {More assumptions};
+		% Columns
+		\node[black, font=\small] at (5.15, 0.25) {Classical resources only};
+		\node<2->[black, font=\small] at (10.35, 0.25) {Adding quantum resources};
+		\draw[decorate, decoration=snake, red, ultra thick] (7.9, -0.1) -- (7.9, -5.5);
+		% Classical tasks
+		\node[box] (ske) at (4.0, -0.75) {Key exchange};
+		\node[box] (mpc) at (6.6, -0.75) {MPC};
+		\node[box] (pkeshort) at (4.25, -2.05) {Long message encryption\\with short key};
+		\node[box] (pke) at (4.25, -4.45) {Long message encryption\\with long key};
+		% Quantum tasks
+		\visible<2->{
+			\node[box] (mpcQ) at (10.35, -2.05) {MPC\\\scite{BCKM21,GLSV21}};
+			\node[box] (skeQ) at (10.35, -3.65) {Key exchange};
+			\node[box] (pkeQ) at (10.35, -4.4) {Long message encryption\\with short key};
+			\node[box] (Qdel) at (10.35, -5.15) {Private certified deletion};
+			\draw[-latex, dashed, thick] (ske.south east) -- (skeQ.north west);
+			\draw[-latex, dashed, thick] (mpc.south east) -- (mpcQ.north west);
+			\draw[-latex, dashed, thick] (pkeshort.south east) -- (pkeQ.west);
+			\draw[-latex, dashed, thick] (pke.east) -- (pkeQ.west);
+		}
+		\node<3->[align=center, font=\tiny] at (10.35, -2.95) {PRS exist, but not quantum OWFs\\\scite{Kre21}};
+	\end{tikzpicture}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Outline of this talk}
+	\vspace{4mm}
+	\roadmap{0}
+\end{frame}
+
+%==============================================================================
+\section{Quantum random number generation}
+%==============================================================================
+\begin{frame}{Outline of this talk}
+	\vspace{4mm}
+	\roadmap{3}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Problem setup}
+	\begin{figure}
+		\hspace*{-1in}
+		\begin{tikzpicture}
+			\def\x{1.7}
+			\def\y{6}
+			%
+			% Draw first box
+			\draw[thick, rounded corners=1, fill=gray] (0, 0, 0) rectangle (\x, \x, 0);
+			\draw[thick, rounded corners=1, fill=gray] (0, \x, 0) -- (0, \x, -\x) -- (\x, \x, -\x) -- (\x, \x, 0) -- cycle;
+			\draw[thick, rounded corners=1, fill=gray] (\x, 0, 0) -- (\x, \x, 0) -- (\x, \x, -\x) -- (\x, 0, -\x) -- cycle;
+			\path (0, 0, 0) -- (\x, \x, 0) node[midway]{Source};
+			%
+			% Draw second box
+			\draw[thick, rounded corners=1, fill=gray] (\y, 0, 0) rectangle (\y+\x, \x, 0);
+			\draw[thick, rounded corners=1, fill=gray] (\y, \x, 0) -- (\y, \x, -\x) -- (\y+\x, \x, -\x) -- (\y+\x, \x, 0) -- cycle;
+			\draw[thick, rounded corners=1, fill=gray] (\y+\x, 0, 0) -- (\y+\x, \x, 0) -- (\y+\x, \x, -\x) -- (\y+\x, 0, -\x) -- cycle;
+			\draw[thick] (\y+\x/6,\x/2,0) -- (\y+\x-\x/6,\x/2,0) arc (0:180:4*\x/12) --cycle;
+			\draw[->, thick] (\y+\x/2, \x/2, 0) -- (\y+\x/2+0.707*\x/3,\x/2+0.707*\x/3, 0);
+			\node at (\y+\x/2, \x/4, 0){\textcolor<40>{red}{$\left\{\only<-5,31->{M_x}\only<6-8>{\scriptstyle{\proj{x}}}\only<9-19>{\textcolor<9,10>{red}{\scriptstyle{H\proj{x}H}}}\only<20-30>{\textcolor<20,21>{red}{\scriptstyle{\frac12I_A}}}\right\}_x$}};
+			%
+			% Draw arrows between Alice's registers
+			\visible<2->{\path (\x, 0, 0) -- (\x, \x, -\x) node[midway] (facecenterleftcube){};}
+			\visible<2->{\draw[thick,->] (\x,\x/2,-\x/2) -- (\y,0 |- facecenterleftcube) node[midway, above]{\only<-4,31->{\textcolor<39>{red}{$\rho_A$}}\only<5-30>{$\scriptstyle{\frac14\proj{0}+\frac34\proj{1}}$}};}
+			\visible<3->{\node (x) at (2*\y, 0 |- facecenterleftcube){$\only<-6,31->{X}\only<7-9>{\scriptstyle{\frac14\proj{0}+\frac34\proj{1}}}\only<10-30>{\textcolor<10>{red}{\scriptstyle{\frac12\proj{0}+\frac12\proj{1}}}}$};}
+			\visible<3->{\draw[thick,->] (\y+\x,\x/2,-\x/2) -- (x.west |- facecenterleftcube);}
+			\visible<4->{\node[anchor=north] at (2*\y, \x/2){\begin{tabular}{c}Close to uniform \visible<8-19,22->{\only<8-9>{\textcolor{red}{\ding{55}}}\only<10-30>{\textcolor{green}{\ding{51}}}}\\\visible<17->{Secret \only<17-19,30>{\textcolor{red}{\ding{55}}}\only<22-29>{\textcolor{green}{\ding{51}}}}\end{tabular}};}
+			%
+			% Draw example
+			\visible<5-30>{
+				\node[blue, anchor=north west] at (\y, -\x/2){$\begin{array}{rl}
+					\visible<15-19,21->{\rho_{X\only<15->{\textcolor<15>{red}{E}}}&=\only<7-20>{\only<-9>{\frac14}\only<10->{\textcolor<10-12>{red}{\frac12}}\proj{0\only<15-20>{,\textcolor<15>{red}{\psi_0}}}+\only<-9>{\frac34}\only<10->{\textcolor<10-12>{red}{\frac12}}\proj{1\only<15-20>{,\textcolor<15>{red}{\psi_1}}}}}\only<21-28>{\textcolor<21>{red}{\frac12I_{X}\otimes\sigma_{E}}}\only<29->{\textcolor{red}{\frac12\proj{0, 0}+\frac12\proj{1, 1}}}\\
+					\visible<16-19>{p_{\text{guess}}&=\frac34}
+				\end{array}$};
+			}
+			\only<11>{\node at (2*\x+\y, -2*\x){\begin{tabular}{c}But what if an adversary had\\information about the source?\end{tabular}};}
+			%
+			% Introduce Eve
+			\visible<12->{\node[anchor=north] (e) at (\x/2+\y/2,-0.866*\y+0.866*\x){$E$};}
+			\visible<12->{\node (rho_abe) at (\x/2+\y/2,-\y/3.464+\x/3.464){$\only<-13,26,27,31->{\rho_{\only<12-25,31->{A}\only<26->{B}E}}\only<14-25>{\scriptstyle{\frac12\ket{0,0}_{AE}+\frac{\sqrt{3}}{2}\ket{1, 1}_{AE}}}\only<28-30>{\scriptstyle{\frac{\ket{0, 0}_{BE}+\ket{1, 1}_{BE}}{\sqrt{2}}}}$};}
+			\visible<12-25,31->{\node[circle, inner sep=0, minimum size=25] (circle1) at (\x, 0) {};}
+			\visible<13-25,31->{\node[circle, inner sep=0, minimum size=5,fill=black] at (\x, 0) {};}
+			\visible<13-25,31->{\node[anchor=north east] at (\x, 0){$A$};}
+			\visible<12->{\node[circle, inner sep=0, minimum size=25] (circle3) at (e.north) {};}
+			\visible<13-25,27->{\node[circle, inner sep=0, minimum size=5, fill=black] at (e.north) {};}
+			\visible<12-25,31-38,40->{\draw[->, thick] (rho_abe) -- (circle1);}
+			\visible<39>{\draw[->, thick, red] (rho_abe) -- (circle1);}
+			\visible<12->{\draw[->, thick] (rho_abe) -- (circle3);}
+			\visible<13-25,31->{\draw[thick] (\x, 0) -- (e.north) node[midway, below, sloped]{Entanglement};}
+			\only<18-19>{\node at (2*\x+\y, -2*\x){\begin{tabular}{c}What if we try to be clever?\\\visible<19>{Let's use POVMs!}\end{tabular}};}
+			\only<23-25>{\node at (2*\x+\y, -1.5*\x){\begin{tabular}{c}How does the device implement\\such a measurement?\end{tabular}};}
+			\only<24-25>{\node at (2*\x+\y, -2*\x){Naimark extension: measures first qubit of $\frac{\ket{0\textcolor<25>{red}{0}}+\ket{1\textcolor<25>{red}{1}}}{\sqrt{2}}$};}
+			% Introduce Naimark extension
+			\only<26->{\node[circle, inner sep=0, minimum size=25] (circle2) at (\y, 0) {};}
+			\only<26-39,41->{\draw[->, thick] (rho_abe) -- (circle2);}
+			\only<40>{\draw[->, thick, red] (rho_abe) -- (circle2);}
+			\only<27->{\node[circle, inner sep=0, minimum size=5, fill=black] at (\y, 0) {};}
+			\only<27->{\draw[thick] (\y, 0) -- (e.north) node[midway, below, sloped]{Entanglement};}
+			\visible<27->{\node[anchor=north west] at (\y, 0){$B$};}
+			%
+			% Phrase at the end
+			\visible<33>{\node at (2*\x+\y, -2*\x){\begin{tabular}{c}How much randomness can we\\generate against such a powerful Eve?\end{tabular}};}
+			% Introduce entanglement between source and measurement device
+			\only<32->{\draw[thick] (\x, 0) -- (\y, 0) node[midway, above, sloped]{Entanglement};}
+			%
+			% Optimisation problem
+			\only<34->{\node[anchor=north west] at (\y, -\x/2){\begin{tabular}{rl}$\min\limits_{\rho_{ABE}\visible<40->{,\textcolor<40>{red}{\left\{P_x\right\}_x}}}$&\only<-37>{Eve's uncertainty}\only<38->{\textcolor<38>{red}{$\mathbb{H}(X|E)_{\rho_{XE}}$}}\\\only<35->{s.t.}&\only<36-38>{Source produces $\rho_A$}\only<39->{\textcolor<39>{red}{$\ptr{BE}{\rho_{ABE}}=\rho_A$}}\\&\only<37-39>{Device implements $\left\{M_x\right\}_x$}\only<40->{\textcolor<40>{red}{$M_x=\ptr{B}{P_x\left(I_A\otimes\rho_B\right)}$}}\end{tabular}};}
+			%
+			% Conclusion
+			\visible<41>{\node at (2*\x+\y, -2*\x){\begin{tabular}{c}This is the randomness produced\\by $\rho_A$ and $\left\{M_x\right\}_x$ against a general adversary!\end{tabular}};}
+		\end{tikzpicture}
+	\end{figure}
+\end{frame}
+
+\begin{frame}{Problem statement}
+	\begin{itemize}
+		\item Randomness hand-waved using entropies\pause
+		\item $\varepsilon$-secure randomness:
+			\[\rho_{XE}\approx_{\varepsilon}\frac{1}{d_X}I_X\otimes\rho_E\]
+		\pause
+			\begin{itemize}
+				\item Uniformly random\pause, independent of Eve\pause
+				\item \citep{Dup23}: link with sandwiched Rényi entropies $H_\alpha$
+			\end{itemize}
+	\end{itemize}
+	\pause
+	\begin{center}
+		\visible<6->{\hspace*{-1in}$\visible<7->{\textcolor<7>{red}{\sup\limits_{\left\{M_x\right\}_x}}}\min\limits_{\rho_{AEB},\left\{P_x\right\}_x}\mathbb{H}(X|E)_{\rho_{XE}}={}$ \visible<7->{\textcolor<7>{red}{maximal}} randomness produced by $\rho_A$ \visible<6>{and $\left\{M_x\right\}_x$}}
+	\end{center}
+	\begin{minipage}[t]{.5\textwidth}
+		\begin{itemize}
+			\item<8-> "$\max\min$" problem
+			\item<9-> $\dim(E)$ arbitrary
+		\end{itemize}
+	\end{minipage}\only<10->{\vline}%
+	\begin{minipage}[t]{.5\textwidth}
+		\begin{itemize}
+			\item<10-> Optimize over all Naimark extensions
+				\begin{itemize}
+					\item<11-> $\dim(B)$ arbitrary
+				\end{itemize}
+			\item<12-> $\implies$ Not trivial!
+		\end{itemize}
+	\end{minipage}
+\end{frame}
+
+\begin{frame}{Reductions}
+    \[\begin{array}{rl}\sup\limits_{\text{\only<5->{\textcolor<5>{red}{Extremal rank-1 }}POVM }\left\{M_x\right\}_x}\visible<-6>{\min\limits_{\substack{\only<-2>{\rho_{ABE}}\\\visible<-6>{\text{PVM }\left\{P_x\right\}_x}}}}&\mathbb{H}(X|E)_{\rho_{XE}}\\\text{s.t.}&\ptr{\only<-6>{B}E}{\only<-2>{\rho_{ABE}}\only<3->{\textcolor<3>{red}{\proj{\psi_{A\only<-6>{B}E}}}}}=\rho_A\\\visible<-6>{&M_x=\ptr{B}{P_x\left(I_A\otimes\ptr{AE}{\only<-2>{\rho_{ABE}}\only<3->{\textcolor<3>{red}{\proj{\psi_{ABE}}}}}\right)}}\end{array}\]
+		\begin{itemize}
+			\item<2-> Eve: purifies $\rho_{AB}$
+			\item<4-> Alice: picks rank-1 extremal POVM
+			\item<6-> Technical result: $M$ rank-1 extremal $\implies\rho_{XE}\perp\!\!\perp\rho_B$
+		\end{itemize}
+			\visible<8>{$\implies$ We only need to find the best rank-1 extremal POVM!}
+\end{frame}
+
+\begin{frame}{A simple case}
+	\only<-7>{\begin{tikzpicture}[baseline]
+	\def\radius{2.5}
+\begin{blochsphere}[radius=\radius cm,tilt=10,rotation=-15,nested=true, axisarrow=->, statecolor=red, statewidth=1.2pt]
+	\drawBall[opacity=0.3]
+	\drawBallGrid[style={draw,opacity=0.1}]{30}{30}
+	\drawStatePolar{state}{0}{0}
+	\node[anchor=south east] at (state.north) {$\rho_A=\proj{0}$};
+        \drawAxis[scale=1.4]{90}{0}
+        \drawAxis[scale=1.2]{0}{0}
+        \drawAxis[scale=1.8]{90}{90}
+	\only<2-4>{\labelLatLon{m0}{90}{0}
+        \labelLatLon{m1}{-30}{0}
+        \labelLatLon{m2}{-30}{120}
+	\labelLatLon{m3}{-30}{240}}
+	\only<5>{\labelLatLon{m0}{-90}{0}
+        \labelLatLon{m1}{30}{0}
+        \labelLatLon{m2}{30}{120}
+	\labelLatLon{m3}{30}{240}}
+	\only<6>{\labelLatLon{m0}{0}{0}
+        \labelLatLon{m1}{0}{0}
+        \labelLatLon{m2}{0}{180}
+	\labelLatLon{m3}{0}{180}}
+	\only<2->{
+	\node[circle, inner sep=0, minimum size=.1cm, fill=black] at (m0){};
+	\node[circle, inner sep=0, minimum size=.1cm, fill=black] at (m1){};
+	\node[circle, inner sep=0, minimum size=.1cm, fill=black] at (m2){};
+        \draw[thick, opacity=.5] (m0.center) -- (m3.center) -- (m2.center);
+        \draw[thick, opacity=.5] (m3.center) -- (m1.center);
+	\node[circle, inner sep=0, minimum size=.1cm, fill=black] at (m3){};
+        \fill[fill=green!30, opacity=.5] (m0.center) -- (m2.center) -- (m3.center) --cycle;
+        \fill[fill=green!30, opacity=.5] (m1.center) -- (m2.center) -- (m3.center) --cycle;
+        \fill[fill=green!30, opacity=.5] (m0.center) -- (m1.center) -- (m3.center) --cycle;
+	\draw[thick,fill=green!30, opacity=.5] (m0.center) -- (m1.center) -- (m2.center) --cycle;}
+\end{blochsphere}
+	\end{tikzpicture}%
+	\hspace{0.15cm}
+\begin{tikzpicture}[baseline, scale=.6]
+	\visible<3->{\begin{axis}[anchor=east, at={(100, 0)}, ybar interval, ymax=1,ymin=0, minor y tick num=1, xlabel={Outcome}, ylabel={Probability}]
+		\only<3-4>{\addplot coordinates { (0, 1/2) (1, 1/6) (2, 1/6) (3, 1/6) (4, 0) };}
+		\only<5>{\addplot coordinates { (0, 0) (1, 1/3) (2, 1/3) (3, 1/3) (4, 0) };}
+		\only<6-7>{\addplot coordinates { (0, 1/4) (1, 1/4) (2, 1/4) (3, 1/4) (4, 0) };}
+		\only<8->{\addplot coordinates { (0, 1/4-1/100) (1, 1/4+1/100) (2, 1/4-1/100) (3, 1/4+1/100) (4, 0) };}
+	\end{axis}}
+\end{tikzpicture}}%
+	\only<8>{
+		\def\fps{24}
+		\begin{animateinline}[autoplay,loop]{\fps}
+			\multiframe{\nframes}{rtheta=0+45/\nframes}{
+				\begin{tikzpicture}[baseline]
+					\def\radius{2.5}
+					\begin{blochsphere}[radius=\radius cm,tilt=10,rotation=-15,nested=true, axisarrow=->, statecolor=red, statewidth=1.2pt]
+						\drawBall[opacity=0.3]
+						\drawBallGrid[style={draw,opacity=0.1}]{30}{30}
+						\drawStatePolar{state}{0}{0}
+						\drawAxis[scale=1.4]{90}{0}
+						\drawAxis[scale=1.2]{0}{0}
+						\drawAxis[scale=1.8]{90}{90}
+						\labelLatLon{m0}{45+\rtheta}{0}
+						\labelLatLon{m1}{-45-\rtheta}{0}
+						\labelLatLon{m2}{0}{225-\rtheta}
+						\labelLatLon{m3}{0}{135+\rtheta}
+						\node[circle, inner sep=0, minimum size=.1cm, fill=black] at (m0){};
+						\node[circle, inner sep=0, minimum size=.1cm, fill=black] at (m1){};
+						\node[circle, inner sep=0, minimum size=.1cm, fill=black] at (m2){};
+						\draw[thick, opacity=.5] (m0.center) -- (m3.center) -- (m2.center);
+						\draw[thick, opacity=.5] (m3.center) -- (m1.center);
+						\node[circle, inner sep=0, minimum size=.1cm, fill=black] at (m3){};
+						\fill[fill=green!30, opacity=.5] (m0.center) -- (m2.center) -- (m3.center) --cycle;
+						\fill[fill=green!30, opacity=.5] (m1.center) -- (m2.center) -- (m3.center) --cycle;
+						\fill[fill=green!30, opacity=.5] (m0.center) -- (m1.center) -- (m3.center) --cycle;
+						\draw[thick,fill=green!30, opacity=.5] (m0.center) -- (m1.center) -- (m2.center) --cycle;
+					\end{blochsphere}
+				\end{tikzpicture}%
+				\hspace{0.15cm}
+				\begin{tikzpicture}[baseline, scale=.6]
+					\begin{axis}[anchor=east, at={(100, 0)}, ybar interval, ymax=1,ymin=0, minor y tick num=1, xlabel={Outcome}, ylabel={Probability}]
+						\addplot coordinates { (0, 0.375-\rtheta/360) (1, 0.125+\rtheta/360) (2, 1/4) (3, 1/4) (4, 0) };
+					\end{axis}
+				\end{tikzpicture}%
+			}%
+		\end{animateinline}%
+	}%
+	\begin{tikzpicture}[overlay]
+		\node at (-1, 3){$\begin{array}{l}\only<2->{\only<2-5,8->{\text{Extremal}}\only<6-7>{\textcolor{red}{\text{Not extremal}}}}\\\visible<3->{\min\mathbb{H}(X|E)\only<2-5,8->{\approx}\only<6-7>{=}\only<3-4>{1.792}\only<5>{1.585}\only<6-7>{1}\only<8->{2}}\\\textcolor{red}{\only<4-5>{\text{SIC-POVM}}}\end{array}$};
+			\only<6>{\node at (-6, -3.5){$M=\left\{\frac12\proj{+},\frac12\proj{+},\frac12\proj{-},\frac12\proj{-}\right\}$};}
+		\only<7>{\node at (-6, -3.5){Key result: extremal rank-1 POVMs are dense within rank-1 POVMs};}
+	\end{tikzpicture}
+\end{frame}
+
+\begin{frame}{Main result}
+	\begin{block}{Theorem}
+		Let $\rho_A$ be a $d_A$-dimensional quantum state and $\varepsilon>0$.\pause\ One can extract $\ell$ bits of $\varepsilon$-secure randomness from $\rho_A^{\otimes n}$ whenever
+        \[\frac{\ell}{n}\leqslant2\log\left(d_A\right)-\min_{\alpha\in(1, 2]}\left(H_{\frac{\alpha}{2\alpha-1}}(A)-\frac{\alpha}{n(\alpha-1)}\log(\varepsilon)\right)+\frac2n\,.\]
+	\end{block}
+	\pause
+	\begin{itemize}
+		\item Quantifies how useful a given source is for QRNG\pause
+		\item Converges to the asymptotic rate $2\log(d_A)-H(A)$
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{A caveat: discontinuities}
+	\begin{columns}[c]
+		\begin{column}{.42\textwidth}
+			\begin{tikzpicture}[scale=.85]
+				\draw[->, thick] (0, 0) -- (5, 0) node[below left, font=\scriptsize]{distance to $N_0$};
+				\draw[->, thick] (0, 0) -- (0, 3.4) node[above, font=\scriptsize]{randomness};
+				\draw[dashed, gray] (0, 2.8) -- (4.9, 2.8);
+				\draw[dashed, gray] (0, 1.2) -- (4.9, 1.2);
+				\node[left, font=\scriptsize] at (0, 2.8) {$2\log d_A-H$};
+				\node[left, font=\scriptsize] at (0, 1.2) {$\log d_A-H$};
+				\draw[thick, blue, domain=0.06:4.8, samples=50] plot (\x, {2.8-0.2*\x-0.03*\x*\x});
+				\draw[blue, thick, fill=white] (0, 2.8) circle (2.5pt);
+				\visible<2->{\fill[red] (0, 1.2) circle (3pt);
+				\draw[red, -Latex, thick] (0.15, 2.55) -- (0.15, 1.4);}
+				\node[blue, font=\scriptsize] at (3.6, 2.5) {$N_\delta$ extremal};
+				\visible<2->{\node[red, font=\scriptsize, anchor=west] at (0.3, 1.9) {$N_0$ not extremal};}
+			\end{tikzpicture}
+		\end{column}
+		\begin{column}{.56\textwidth}
+			\begin{itemize}\small
+				\item Optimum approached by extremal rank-1 POVMs $N_\delta\to N_0=\left\{\frac{1}{d_A}\proj{y}\right\}_{x,y}$\pause
+				\item $N_0$ is not extremal: randomness drops by $\log(d_A)$ bits!\pause
+				\item Attack: the device implements $N_0$ instead of $N_\delta$, undetectable as $\delta\to0$\pause
+				\item Continuous on extremal rank-1 POVMs, and on full-rank POVMs\pause
+                \item Known feasible optimal point in all dimensions\pause
+				\item \textcolor{red}{Open}: where are all the discontinuities? Is the optimal POVM far from them?
+			\end{itemize}
+		\end{column}
+	\end{columns}
+\end{frame}
+
+%==============================================================================
+\section{Real-valued pseudorandom states}
+%==============================================================================
+\begin{frame}{Outline of this talk}
+	\vspace{4mm}
+	\roadmap{4}
+\end{frame}
+
+\begin{frame}{Pseudorandom quantum states (PRS)}
+	\begin{block}{Definition \citep{JLS18}, informal}
+		A keyed family $\left\{\ket{\psi_\key}\right\}_{\key\in\{0,1\}^\lambda}$ of $d$-dimensional states that is\pause
+		\begin{itemize}
+			\item efficiently preparable from $\key$,\pause
+			\item indistinguishable from Haar-random states by any efficient adversary, even given $t=\poly(\lambda)$ copies.
+		\end{itemize}
+	\end{block}
+	\pause
+    Used to perform cryptography in Microcrypt.\pause\ Typical security proof, e.g.\ for binary phase states \scite{JLS18,BS19} with $\left\{f_\key\right\}_\key$ a quantum-secure PRF:
+	\pause
+    \[\underbrace{\left(\frac{1}{\sqrt{d}}\sum_x(-1)^{f_\key(x)}\ket{x}\right)^{\otimes t}}_{\text{PRS}}\;\underset{\text{qPRF}}{\approx_c}\;\underbrace{\left(\frac{1}{\sqrt{d}}\sum_x(-1)^{f(x)}\ket{x}\right)^{\otimes t}}_{f\text{ truly random}}\;\underset{\visible<6->{\textcolor{red}{\varepsilon(t,d)}}}{\approx_s}\;\begin{array}{c}t\text{ copies}\\\text{of a Haar}\\\text{random}\\\text{state}\end{array}\]
+	\visible<6->{Advantage $\leqslant\negl(\lambda)+\textcolor{red}{\varepsilon(t,d)}$\visible<6->{: $\varepsilon$ limits the number of copies}}
+\end{frame}
+
+\begin{frame}{Real versus complex amplitudes}
+	\begin{block}{$\varepsilon$-approximate state $t$-design}
+        An ensemble $\left(\mathcal{S},\mu\right)$ such that $\td{\mathbb{E}_{\ket{\psi}\sim\mu}\left[\proj{\psi}^{\otimes t}\right]}{\crho{d}{t}}\leqslant\textcolor<2>{red}{\varepsilon}$, where $\crho{d}{t}\defeq\mathbb{E}_{\ket{\psi}\sim\text{Haar}}\left[\proj{\psi}^{\otimes t}\right]$.
+	\end{block}
+	\pause\pause
+	\begin{center}
+		\begin{tabular}{c|c|c}
+			& Real amplitudes & Complex amplitudes\\
+			\hline
+			Best known $\varepsilon$ & $\Theta\left(\frac{t^2}{d}\right)$ & $\Theta\left(\frac{t}{d}\right)$\\
+			& \scite{BS19,JMW24,CSBH25} & \scite{BS20,LQSYZ24}
+		\end{tabular}
+	\end{center}
+	\pause
+	\begin{center}
+		Is $\frac{t^2}{d}$ a fundamental limit for real-valued designs? \visible<5->{\textcolor{red}{\textbf{Yes.}}}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Step 1: the best design with fixed imaginarity}
+	\begin{block}{Proposition}
+        Let \[\rrrho{d}{t}\defeq\int_{O\in\mathcal{O}_d}\left(O\proj{0}O^\top\right)^{\otimes t}\,\mathrm{d}\mu(O)\,.\]\pause\ For any ensemble $\mathcal{S}$ of real-valued states, with \[\rho_{\mathcal{S}^t}\defeq\mathbb{E}_{\ket{\psi}\sim\mathcal{S}}\left[\proj{\psi}^{\otimes t}\right]\]
+        \pause we have
+		\[\left\|\rho_{\mathcal{S}^t}-\crho{d}{t}\right\|\geqslant\left\|\rrrho{d}{t}-\crho{d}{t}\right\|\,.\]
+	\end{block}
+    \pause\begin{center}$\implies\frac12\left\lVert\rrrho{d}{t}-\crho{d}{t}\right\rVert$ is the best possible $\varepsilon$ for real-valued states\end{center}
+\end{frame}
+
+\begin{frame}{Step 2: diagonalizing with symmetries}
+	\begin{block}{Schur's lemma, informally}
+		If $M$ has symmetries ($VMV^\dagger=M$ for a group of unitaries $V$), its eigenvalues come in \textbf{blocks}: $M$ is constant on each block.\\
+		The \textbf{more} symmetries, the \textbf{larger} the blocks.
+	\end{block}
+	\visible<2->{Both states live on the symmetric subspace $\vee^t\mathbb{C}^d$, spanned by the $\ket{\psi}^{\otimes t}$}\pause
+	\begin{columns}[T]
+		\begin{column}{.48\textwidth}
+			\visible<3->{\centering\textbf{Complex}: $\crho{d}{t}$ commutes with every $U^{\otimes t}$: \textbf{enough} symmetries for a single block\\[1ex]
+			\begin{tikzpicture}
+				\fill[tptred!30] (0, 0) rectangle (1.4, 1.4);
+				\draw[thick] (0, 0) rectangle (1.4, 1.4);
+				\node at (0.7, 0.7) {$\lambda$};
+			\end{tikzpicture}\\[1ex]
+			$\crho{d}{t}=\binom{d+t-1}{t}^{-1}\,\Pi_{\vee^t\mathbb{C}^d}$\par}
+		\end{column}
+		\begin{column}{.48\textwidth}
+			\visible<4->{\centering\textbf{Real}: $\rrrho{d}{t}$ only commutes with the $O^{\otimes t}$: a \textbf{subset} of them, so smaller blocks\\[1ex]
+			\begin{tikzpicture}
+				\draw[thick] (0, 0) rectangle (1.4, 1.4);
+				\fill[blue!20] (0, 0.55) rectangle (0.85, 1.4);
+				\fill[blue!40] (0.85, 0.2) rectangle (1.2, 0.55);
+				\fill[blue!60] (1.2, 0) rectangle (1.4, 0.2);
+				\node at (0.425, 0.975) {$\lambda_0$};
+				\node[font=\scriptsize] at (1.025, 0.375) {$\lambda_1$};
+			\end{tikzpicture}\\[1ex]
+            \visible<5->{\textcolor{red}{Goal: identify the blocks (and the $\lambda_k$)}\par}}
+		\end{column}
+	\end{columns}
+\end{frame}
+
+\begin{frame}{Finding the blocks}
+    We're looking for the subspaces that are invariant by applying $O^{\otimes t}$ for all $O\in\mathcal{O}_d$.\pause\ Take $t=2$ and $\ket{\Phi}\defeq\frac{1}{\sqrt{d}}\sum_x\ket{x, x}\in\vee^2\mathbb{C}^d$.\pause\ Then \(O^{\otimes2}\ket{\Phi}=\ket{\Phi}\) for every $O\in\mathcal{O}_d$, but $U^{\otimes2}\ket{\Phi}\neq\ket{\Phi}$ doesn't hold for every $U\in\mathcal{U}_d$.\pause
+	\begin{itemize}
+		\item $\proj{\Phi}$ is a block on its own for $\rrrho{d}{2}$, but just part of the single block of $\crho{d}{2}$\pause
+		\item For larger $t$: many blocks, of many sizes, in dimension $\binom{d+t-1}{t}$\pause
+        \item How do we find them?
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Our approach: from tensors to polynomials}
+	\begin{itemize}\small
+        \item Isomorphism $\vee^t\mathbb{C}^d\cong\mathcal{P}_d^t$, homogeneous polynomials of degree $t$ with $d$ variables.\pause\ If $P(X)$ is the image of $\ket{\psi}$, then\pause
+            \begin{itemize}
+                \item the Bombieri norm \scite{Bea+90} of $P(X)$ is the usual norm of $\ket{\psi}$\pause
+                \item the image of $O^{\otimes t}\ket{\psi}$ is $P\left(O^\top X\right)$\pause
+            \end{itemize}
+		\item Blocks: harmonic decomposition \scite{CW68}, with \emph{harmonic} polynomials $\harm{d}{n}\defeq\left\{H\,:\,\Delta H=0\right\}$
+			\[\mathcal{P}_d^t=\harm{d}{t}\oplus\left\|X\right\|^2\harm{d}{t-2}\oplus\left\|X\right\|^4\harm{d}{t-4}\oplus\cdots\]
+            with
+            \[\|X\|^2=\left(\sum_{i=1}^dX_i\right)^2\,.\]\pause
+        \item Eigenvalues:
+            \[\only<-8>{\tr{\rrrho{d}{t}\Pi_k}}\only<9>{\underbrace{\tr{\rrrho{d}{t}}}_{\left\lVert\Pi_kP_\delta\right\rVert_{\text{Bombieri}}^2}}\only<10->{\left\lVert\Pi_kP_\delta\right\rVert^2_{\text{Bombieri}}}=\lambda_{d, t, k}\only<6>{\tr{\Pi_k}}\only<7>{\underbrace{\tr{\Pi_k}}_{\dim\left(\mathcal{H}_d^{t-2k}\right)}}\only<8->{\dim\left(\mathcal{H}_d^{t-2k}\right)}\]
+	\end{itemize}
+    \vfill\visible<11->{\centering$\implies$ We can get a closed-form expression for the eigenvalues!}
+\end{frame}
+
+\begin{frame}{Main result: real amplitudes cost a factor $t$}
+	\begin{block}{Theorem}
+		For $t\lesssim\sqrt{2d\ln d}$:
+        \[\td{\rrrho{d}{t}{0}}{\crho{d}{t}}=\frac{t(t-1)}{2d}+\Theta\left(\frac{t^3}{d^2}\right)\,.\]
+	\end{block}
+	\visible<2->{\centering$\implies$ \textbf{Complex amplitudes are necessary} to beat $\varepsilon=\Theta\left(\frac{t^2}{d}\right)$\par}
+\end{frame}
+
+\begin{frame}{From designs to pseudorandom states?}
+	\small
+	\begin{itemize}
+		\item Optimal measurement $\left\{P,I-P\right\}$ distinguishing $\rrrho{d}{t}$ from $\crho{d}{t}$: $P$ projects onto the blocks where $\lambda_{d,t,k}\leqslant\binom{d+t-1}{t}^{-1}$\pause
+		\item Works for \emph{any} real ensemble $\mathcal{S}$: $\tr{P\rho_{\mathcal{S}}^{(t)}}=\tr{P\rrrho{d}{t}}$\pause
+		\item This bounds $\varepsilon$, not the PRS advantage: is $P$ \emph{efficient}?
+	\end{itemize}
+	\pause
+	\begin{block}{Open problem}
+		Can $\left\{P,I-P\right\}$ be implemented to precision $\eta$ in time $\poly\left(t,\log d,\frac{1}{\eta}\right)$?
+	\end{block}
+	\pause
+	\begin{itemize}
+		\item Route: Schur transform \scite{Bur+25}, then change of basis from monomials to harmonics\pause
+		\item If so (we conjecture it): \textbf{real-valued PRS} are insecure beyond $\sim\sqrt{d}$ copies
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Byproducts of the spectral decomposition}
+	\begin{itemize}
+		\item Exact designs from orthogonal twirling a state with imaginarity following a Beta law\pause
+		\item Imaginarity testing requires $\Omega\left(\sqrt{d}\right)$ copies\pause
+		\item Optimal measurement for imaginarity estimation, saving copies over \scite{HBK25}\pause
+		\item Real-valued state estimation: the Pretty Good Measurement is optimal, with infidelity $\sim\frac{d-1}{4t}$ (numerically) vs.\ $\frac{d-1}{t}$ for complex states
+	\end{itemize}
+\end{frame}
+
+%==============================================================================
+\section{Pseudorandom coherent states}
+%==============================================================================
+\begin{frame}{Outline of this talk}
+	\vspace{4mm}
+	\roadmap{5}
+\end{frame}
+
+\begin{frame}{Pseudorandom states meet optics}
+	\begin{itemize}
+		\item<1-> PRS live in the qudit model: $\ket{\psi}\in\mathbb{C}^d$, given $t$ times\ldots
+		\item<2-> \ldots but quantum communication uses light: coherent states
+			\[\ket{\alpha}=e^{-\frac{|\alpha|^2}{2}}\sum_{N\geqslant0}\frac{\alpha^N}{\sqrt{N!}}\ket{N},\qquad\text{number of photons }N\sim\operatorname{Poisson}\left(|\alpha|^2\right)\]
+        \item<3-> No Haar measure on the set of displacement operators!
+	\end{itemize}
+	\visible<4->{\centering What is a \emph{uniformly random} coherent state?\par}
+    \visible<5->{Mapping of \citet{AL14}: one mode per basis state
+            \[\sum_{x=0}^{d-1}\psi_x\ket{x}\;\longmapsto\;\bigotimes_{x=0}^{d-1}\ket{\alpha\,\psi_x}\]}
+\end{frame}
+
+\begin{frame}{Haar-random coherent states}
+	\small
+	Average the mapped state over Haar-random $\ket{\psi}$:
+	\[\haarcoh{\alpha}=\sum_{N\geqslant0}\underbrace{e^{-|\alpha|^2}\frac{|\alpha|^{2N}}{N!}}_{\visible<2->{\text{Poisson statistics}}}\;\underbrace{\binom{d+N-1}{N}^{-1}\sum_{n_1+\cdots+n_d=N}\proj{n_1,\ldots,n_d}}_{\visible<3->{N\text{ photons spread uniformly over }d\text{ modes}\;\cong\;\crho{d}{N}}}\]
+	\visible<4->{\centering$\implies$ the mean number of photons $|\alpha|^2$ plays the role of the number of copies $t$\par}
+	\visible<5->{
+	\begin{block}{Pseudorandom coherent states (PRCS)}
+		A keyed family of $d$-mode coherent states $\bigotimes_x\ket{\alpha_{\key,x}}$ that is
+		\begin{itemize}
+			\item normalized: one photon on average,
+			\item efficiently preparable from $\key$,
+			\item pseudorandom: $\bigotimes_x\ket{\sqrt{t}\,\alpha_{\key,x}}\approx_c\haarcoh{\sqrt{t}}$ for all $t=\poly(\lambda)$.
+		\end{itemize}
+	\end{block}}
+\end{frame}
+
+\begin{frame}{A PRCS construction}
+	\begin{block}{Theorem}
+		If $\left\{f_\key\right\}_\key$ is a quantum-secure PRF from $\left[2^\lambda\right]$ to $[p]$, then $\displaystyle\left\{\bigotimes_{x=0}^{2^\lambda-1}\ket{\frac{e^{\frac{2\mathrm{i}\pi f_\key(x)}{p}}}{\sqrt{2^\lambda}}}\right\}_\key$ is a PRCS.
+	\end{block}
+	\pause
+	\begin{center}
+	\begin{tikzpicture}[st/.style={draw, rounded corners, thick, align=center, minimum height=1cm, font=\scriptsize}]
+		\node[st] (a) at (1.3, 0) {$\bigotimes_x\ket{\sqrt{\frac td}\,e^{\frac{2\mathrm{i}\pi f_\key(x)}{p}}}$};
+		\node[st] (b) at (4.8, 0) {$\bigotimes_x\ket{\sqrt{\frac td}\,e^{\frac{2\mathrm{i}\pi f(x)}{p}}}$};
+		\node[st] (c) at (8.3, 0) {$\bigotimes_x\ket{\sqrt{\frac td}\,e^{\mathrm{i}\theta_x}}$};
+		\node[st] (d) at (11.5, 0) {$\haarcoh{\sqrt{t}}$};
+		\draw[<->, thick] (a) -- (b) node[midway, above, font=\tiny]{qPRF} node[midway, below=.6cm, font=\scriptsize]{$\negl(\lambda)$};
+		\visible<3->{\draw[<->, thick] (b) -- (c) node[midway, above, font=\tiny]{random} node[midway, below=.6cm, font=\scriptsize]{$\sqrt{\frac{2d}{p!}\left(\frac td\right)^p}$};}
+		\visible<4->{\draw[<->, thick] (c) -- (d) node[midway, above, font=\tiny]{phases} node[midway, below=.6cm, font=\scriptsize]{$\frac{t^2}{d-1}$};}
+	\end{tikzpicture}
+	\end{center}
+	{\scriptsize (trace distance bounds up to lower-order terms, with $d=2^\lambda$)}
+	\visible<5->{
+	\begin{itemize}
+		\item Each mode prepared independently: constant depth\ldots\pause
+        \item \ldots but $2^\lambda$ modes: practical limitation
+	\end{itemize}}
+\end{frame}
+
+\begin{frame}
+	\frametitle{An application: cryptography from a riddle for children}
+	\begin{figure}
+		\hspace*{-1in}
+		\begin{tikzpicture}
+			\node[nun, minimum width=1.5cm] (alice) at (0, 0) {Alice};
+			\node[bob, mirrored, minimum width=1.5cm] (bob) at (\textwidth - 1in, 0) {Bob};
+			\path (alice) -- (bob) node[midway] (alicebobmiddle) {};
+			\node[priest, minimum width=1.5cm,female] (eve) at (alicebobmiddle |- 0, -3) {Courier};
+			\phantom{\tikzopenlock{(-1.5, 1)}{A}}
+
+			\only<1-3,7-9>{\node (env) at (2, 1) {\includegraphics[width=2cm]{enveloppe.png}};}
+			\only<1-4,11->{\tikzopenlock{(\textwidth - 1in - 1.5cm, 1)}{B}}
+
+			\only<1,8->{\tikzopenlock{(-1.5, 1)}{A}}
+
+			\only<2-3,7>{\tikzlock{(1, 1)}{A}}
+			\only<3,9>{\draw[->] (env) -- (\textwidth - 1in - 2cm, 0 |- env);}
+
+			\only<4-6,10->{\node (env) at (\textwidth - 1in -3cm, 1) {\includegraphics[width=2cm]{enveloppe.png}};}
+			\only<4-6>{\tikzlock{(\textwidth -1in -4cm, 1)}{A}}
+			\only<5-6,10>{\tikzlock{(\textwidth -1in -2.5cm, 1)}{B}}
+			\only<6>{\draw[->] (env) -- (2, 0 |- env);}
+
+			\only<7-9>{\tikzlock{(2.5, 1)}{B}}
+			\visible<12->{\node[align=center, text width=4.5cm] at (\textwidth - 1in - 0.5cm, -2.6) {A message exchanged without any shared key!};}
+		\end{tikzpicture}
+	\end{figure}
+\end{frame}
+
+\begin{frame}{The (coherent) double-lock protocol}
+	Locks must commute. One-time pad? $m\oplus\key_A$,\ $m\oplus\key_A\oplus\key_B$,\ $m\oplus\key_B$\ \visible<2->{$\implies$ \textcolor{red}{XOR them to get $m$}}
+	\begin{center}
+	\begin{tikzpicture}
+		\node[alice, minimum width=1.1cm] (A) at (0, 0) {};
+		\node[bob, mirrored, minimum width=1.1cm] (B) at (10.2, 0) {};
+		\node[below=1pt, align=center, font=\small] at (A.south) {Alice, $\key$};
+		\node[below=1pt, align=center, font=\small] at (B.south) {Bob, $m\in\{0,1\}^n$};
+		\visible<3->{\draw[->, thick] (0.9, 0.35) -- (9.3, 0.35) node[midway, above]{$\only<-4>{\left(\sum_x(-1)^{f_\key(x)}\ket{x}\right)^{\otimes t_A}}\only<5->{\textcolor<5>{red}{\bigotimes_x\ket{(-1)^{f_\key(x)}\frac{\alpha}{\sqrt{2^n}}}}}$};}
+		\visible<4->{\draw[<-, thick] (0.9, -0.55) -- (9.3, -0.55) node[midway, below, font=\scriptsize]{Alice undoes $f_\key$, applies $H^{\otimes n}$: gets $\ket{m}$} node[midway, above]{$\only<-4>{\sum_x(-1)^{f_\key(x)\oplus x\cdot m}\ket{x}}\only<5->{\textcolor<5>{red}{\bigotimes_x\ket{(-1)^{f_\key(x)\oplus x\cdot m}\frac{\beta}{\sqrt{2^n}}}}}$};}
+	\end{tikzpicture}
+	\end{center}
+	\begin{itemize}\small
+		\item<3-> Alice's state is a PRS, i.e.\ a \emph{quantum public key}: secure for $t_A=\poly$, $t_B=1$ \scite{Col23,AGY25}
+		\item<5-> Coherent version: $|\beta|\leqslant|\alpha|$ models losses\ldots\visible<6->{ and \textbf{splitting} the public key among many Bobs}
+		\item<7-> Public-key functionality from quantum-secure PRFs only, impossible classically \scite{IR90}\visible<8->{\\\textcolor{red}{(assuming an authenticated quantum channel)}}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Security and key rates}
+	\[p_{\text{guess}}\leqslant2^{-n/2}\left(\sqrt{\textcolor{red}{e^{2|\alpha||\beta|}}+N^2}+N\right)+\Theta\left(2^{-n}N^2\right)\]
+	\visible<2->{\centering
+	\begin{tikzpicture}
+		\begin{axis}[
+					xlabel={Distance (km)},
+					ylabel={Key rate (bits/user/round)},
+					grid=major,
+					ymode=log,
+					width=.62\textwidth, height=5cm, ylabel style={font=\tiny}, legend pos=outer north east,
+					ymin=1e-9, xmin=0,
+					label style={font=\scriptsize},
+					tick label style={font=\scriptsize},
+					legend style={font=\tiny},
+				]
+					\addplot[blue, thick, mark=none] table[col sep=tab, x index=0, y index=1] {data/distance_rate_alpha_1_bits_1_parties.txt};
+					\addlegendentry{$n=1$}
+					\addplot[blue, thick, mark=none, densely dashed, forget plot] table[col sep=tab, x index=0, y index=1] {data/distance_rate_alpha_1_bits_100_parties.txt};
+					\addplot[red, thick, mark=none] table[col sep=tab, x index=0, y index=1] {data/distance_rate_alpha_2_bits_1_parties.txt};
+					\addlegendentry{$n=2$}
+					\addplot[red, thick, mark=none, densely dashed, forget plot] table[col sep=tab, x index=0, y index=1] {data/distance_rate_alpha_2_bits_100_parties.txt};
+					\addplot[brown!60!black, thick, mark=none] table[col sep=tab, x index=0, y index=1] {data/distance_rate_alpha_3_bits_1_parties.txt};
+					\addlegendentry{$n=3$}
+					\addplot[brown!60!black, thick, mark=none, densely dashed, forget plot] table[col sep=tab, x index=0, y index=1] {data/distance_rate_alpha_3_bits_100_parties.txt};
+					\addlegendimage{black, thick, densely dashed}
+					\addlegendentry{100 users}
+				\end{axis}
+	\end{tikzpicture}\par
+	{\footnotesize Signal split among 100 users: \textbf{still non-zero rates}\quad{\tiny($T=10^{-0.02L}$, $\eta_{\text{det}}=65\%$, $p_{\text{dark}}=10^{-8}$)}\par}}
+\end{frame}
+
+%==============================================================================
+\section{Conclusion}
+%==============================================================================
+\begin{frame}{Conclusion}
+	\footnotesize
+	\renewcommand{\arraystretch}{1.2}
+	\begin{tabular}{>{\raggedright\arraybackslash}p{.13\textwidth}>{\raggedright\arraybackslash}p{.52\textwidth}>{\raggedright\arraybackslash}p{.29\textwidth}}
+		& \textbf{Contribution} & \textbf{Open problem}\\
+		\hline
+		QRNG & Maximal intrinsic randomness in closed form, for all sandwiched Rényi entropies and POVMs $\implies$ simple benchmark for sources & Discontinuities\\
+		\visible<2->{Real-valued designs} & \visible<2->{Spectral decomposition of orthogonally-twirled states $\implies\varepsilon=\Omega\left(\frac{t^2}{d}\right)$; imaginarity testing \& estimation, real state estimation} & \visible<2->{Efficient distinguisher $\implies$ real PRS bound}\\
+		\visible<3->{PRCS} & \visible<3->{Haar-random coherent states, PRCS and a construction; quantum public-key encryption with many recipients} & \visible<3->{Signal strength, authentication, number of modes}
+	\end{tabular}
+\end{frame}
+
+\begin{frame}{Publications and activities}
+	\scriptsize
+	\begin{itemize}
+		\item \fullcite{ANB24}
+		\item \fullcite{NAB25}
+		\item \fullcite{BNA26}
+		\item \fullcite{NAD23} \emph{(from my master's thesis)}
+		\item \fullcite{AN25} \emph{(popular science)}
+	\end{itemize}
+	\normalsize
+	\begin{itemize}
+		\item Teaching: Qiskit hackathons for L3 students (exercises, notebooks, 12 hours of lectures)
+		\item Software: \texttt{ncpoleon}, (non)commutative polynomial optimization via SDP relaxations (with Peter Brown)
+	\end{itemize}
+	\vfill
+	\begin{center}\Large Thank you!\end{center}
+\end{frame}
+
+%==============================================================================
+\appendix
+%==============================================================================
+\begin{frame}{What does the optimal POVM for qubits look like?}
+	For $\rho_A=\lambda_0\proj{0}+(1-\lambda_0)\proj{1}$ with $\lambda_0\geqslant\frac12$, the rank-1 POVM $\left\{\proj{\varphi_i}\right\}_{i=0}^3$ with
+    \begin{equation*}
+        \begin{aligned}
+            \ket{\varphi_0} &= \frac{1}{2\sqrt{\lambda_0}}\,\ket{0}\\
+            \ket{\varphi_{1+k}} &= \sqrt{\frac{4\lambda_0-1}{12\lambda_0}}\,\ket{0}+\frac{e^{\frac{2\mathrm{i}k\pi}{3}}}{\sqrt{3}}\,\ket{1}\qquad k\in\{0,1,2\}
+        \end{aligned}
+    \end{equation*}
+	is extremal and yields a uniform distribution when measuring $\rho_A$.
+
+	\vspace{2mm}
+	General dimension: an explicit inductive construction peels off one eigenvalue at a time (thesis, Section~3.4.4).
+\end{frame}
+
+\begin{frame}{Is having the POVM rank-1 necessary for independence with the device's inner system?}
+    We proved that $\left\{M_i\right\}_i$ \textcolor<2>{red}{rank-1} extremal POVM $\implies\rho_{XE}=f\left(\rho_{AE}\right)\perp\!\!\perp B$.
+
+    \visible<3->{\cite[Theorem~1]{DCZM23}: extremality is enough, in a model without $A$--$B$ entanglement.}
+
+    \visible<4->{Generalization removing the rank-1 assumption: Senno, Davino and Mugnai (private communication, unpublished).}
+
+    \visible<5->{Inconsequential for the maximal value: rank-1 extremal POVMs are already optimal.}
+\begin{tikzpicture}[overlay]
+    \only<2>{\node[red] at (4.5, 3.5) {Necessary?};}
+\end{tikzpicture}
+\end{frame}
+
+\begin{frame}{Where is the intrinsic randomness continuous?}
+	\begin{block}{Theorem (rank-1 extremal POVMs)}
+		For a continuous conditional entropy $\mathbb{H}$ and $N\leqslant d_A^2$, $M\mapsto\mathcal{I}_{\mathbb{H}}\left(\rho_A,M\right)$ is continuous on rank-1 extremal POVMs with $N$ outcomes: $\rho_{XE}$ only depends on $M$ and a purification of $\rho_A$.
+	\end{block}
+	\begin{block}{Theorem (full-rank POVMs)}
+		If $M\mapsto2^{\mathcal{I}_{\mathbb{H}}\left(\rho_A,M\right)}$ is convex (true for sandwiched Rényi entropies), then $M\mapsto\mathcal{I}_{\mathbb{H}}\left(\rho_A,M\right)$ is continuous on $\left\{M\,\middle|\,\forall x, M_x\succ0\right\}$, the relative interior \scite{Roc70}.
+	\end{block}
+	\begin{itemize}
+		\item Any implemented (noisy) POVM is full-rank\ldots
+		\item \ldots but can the optimal value be approached inside this set?
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Computing the optimal $\alpha$}
+	Minimize over $\alpha\in(1,2]$:
+	\[f(\alpha)=H_{\frac{\alpha}{2\alpha-1}}(A)-\frac{\alpha}{n(\alpha-1)}\log(\varepsilon)\]
+	\begin{itemize}
+		\item With $p=\operatorname{spec}(\rho_A)$ and $q(\beta)_x\propto p_x^\beta$: $f'(\alpha)=\frac{D_{\mathrm{KL}}\left(q\left(\frac{\alpha}{2\alpha-1}\right)\middle\|p\right)+\frac{\log\varepsilon}{n}}{(\alpha-1)^2}$
+		\item $\alpha\mapsto D_{\mathrm{KL}}\left(q\left(\frac{\alpha}{2\alpha-1}\right)\middle\|p\right)$ is strictly increasing unless $p$ is uniform on its support
+		\item $\implies f$ is unimodal: bisection gives $\alpha^*$ to precision $\delta$ in $\left\lceil\log_2\frac1\delta\right\rceil-1$ steps
+		\item As $n\to\infty$: $\alpha=1+\frac{1}{\sqrt{n}}$ recovers the asymptotic rate
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Eigenvalues of $\rrho{d}{t}{\delta}$}
+	For $d=2$, with $T_n$ the Chebyshev polynomials of the first kind:
+	\[\lambda_{2,t,k}(\delta)=\frac{t!\,(1-\delta)^{\frac t2}\,T_{t-2k}\left(\frac{1}{\sqrt{1-\delta}}\right)}{(2t-2k)!!\,(2k)!!}\]
+	For $d\geqslant3$, with $C_n^{(\mu)}$ the Gegenbauer polynomials:
+	\[\lambda_{d,t,k}(\delta)=\frac{t!\,(t-2k)!\,(d-4)!!\,(d-2)!\,(1-\delta)^{\frac t2}\,C_{t-2k}^{\left(\frac d2-1\right)}\left(\frac{1}{\sqrt{1-\delta}}\right)}{(2t+d-2k-2)!!\,(2k)!!\,(d+t-2k-3)!}\]
+	\begin{itemize}
+		\item Proof: Bombieri norm of the projection of $P^t$ onto each $\left\|X\right\|^{2k}\harm{d}{t-2k}$, with $P=\alpha X_0+\mathrm{i}\beta X_1$
+		\item $\delta=1$: $\rrho{d}{t}{1}$ is maximally mixed on $\harm{d}{t}$
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Imaginarity testing}
+	A $\left(\beta_0,\beta_1,t\right)$-tester decides whether $\Imaginarity\leqslant\beta_0$ or $\Imaginarity\geqslant\beta_1$ from $t$ copies.
+	\begin{block}{Theorem}
+		\begin{itemize}
+			\item If $\beta_1<\left(\frac13\right)^{\frac{2}{d-1}}$, a tester needs $t\sim\sqrt{2d\ln\left(\frac{1}{\frac23+\beta_1^{\frac{d-1}{2}}}\right)}$ copies.
+			\item If $\beta_0>\left(\frac23\right)^{\frac{2}{d-1}}$, a tester needs $t\sim d\,\frac{\beta_0^{\frac{d-1}{2}}-\frac23+\sqrt{\beta_0^{\frac{d-1}{2}}-\frac23}}{\frac53-\beta_0^{\frac{d-1}{2}}}$ copies.
+		\end{itemize}
+	\end{block}
+	Proof: by the exact-design decomposition, the twirl restricted to imaginarities $\geqslant\beta_1$ is $\beta_1^{\frac{d-1}{2}}$-close to $\crho{d}{t}$, so a tester forces $\td{\rrho{d}{t}{0}}{\crho{d}{t}}\geqslant\frac13-\beta_1^{\frac{d-1}{2}}$; conclude with the asymptotics of the main result.
+\end{frame}
+
+\begin{frame}{Key rate ingredients}
+	Alice uses $2^n$ threshold detectors (efficiency $\eta_{\text{det}}$, dark counts $p_{\text{dark}}$), transmittance $T$:
+	\[1-p_{\text{abort}}=\left(1-p_{\text{dark}}\right)^{2^n-1}\left[2^np_{\text{dark}}-\eta_{\text{det}}\left(1-e^{-T|\beta|^2}\right)\left(2^np_{\text{dark}}-1\right)\right]\]
+	\[I(A:B)=n+\Pr[A=B]\log\Pr[A=B]+\left(1-\Pr[A=B]\right)\log\frac{1-\Pr[A=B]}{2^n-1}\]
+	\[p_{\text{guess}}\leqslant\sqrt{\frac{e^{2|\alpha||\beta|}+\left(|\alpha|^2+|\beta|^2\right)^2}{2^n}}+\frac{|\alpha|^2+|\beta|^2}{2^{\frac n2}}+\Theta\left(\frac{\left(|\alpha|^2+|\beta|^2\right)^2}{2^n}\right)\]
+	Pessimistic: Eve gets a copy of both the public key and the ciphertext.
+\end{frame}
+
+\begin{frame}{Comparison with other key distribution methods}
+	\begin{description}
+		\item[Classical PKE] needs \emph{trapdoor} one-way functions (broken by Shor); ours only quantum-secure PRFs, but needs dedicated hardware
+		\item[Classical SKE] needs a pre-shared secret; so do we in practice, to authenticate the quantum channel $\implies$ currently the better option
+		\item[QKD] everlasting security, but one key per quantum channel; ours: computational security, one broadcast for many users
+		\item[Other QPKE] qudit-based \scite{Bar+23,Col23,KTNY24,MW24}; \scite{KTNY24,MW24} resist tampered public keys, unlike ours
+	\end{description}
+\end{frame}
+
+\begin{frame}{The Quantum Computational Timelock (QCT) model}
+	\begin{center}
+	\begin{tikzpicture}
+		\draw[-Latex, thick] (0, 0) -- (13.4, 0) node[below left, font=\scriptsize]{time};
+		\fill (0.5, 0) circle (2.5pt) node[above right, align=left, font=\scriptsize]{Alice sends quantum states\\encoded with a weak key $\key_{\text{weak}}$};
+		\visible<2->{\fill[red] (4.5, 0) circle (2.5pt) node[below=3pt, align=center, font=\scriptsize, red]{Eve's quantum memory has decohered\\(at best $\sim$ seconds \scite{Wel25})};}
+		\visible<3->{\fill (11, 0) circle (2.5pt) node[above left, align=right, font=\scriptsize]{$\key_{\text{weak}}$ broken (e.g.\ RSA-2048:\\8 hours to a week)\\\scite{GE21,Gid25}};}
+		\visible<2->{\draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick] (0.5, -1.2) -- (11, -1.2) node[midway, below=5pt, font=\scriptsize]{Eve must measure \emph{before} learning $\key_{\text{weak}}$ $\implies$ \textbf{everlasting security}};}
+	\end{tikzpicture}
+	\end{center}
+	\begin{itemize}\small
+		\item<4-> \citet{MBBA25}: Hidden Matching ($\sqrt{d}$ vs.\ $\log d$ bits) $\implies$ many copies, but one bit per round and a pessimistic Holevo bound
+		\item<5-> Stronger separations, e.g.\ $k$-Forrelation ($d^{1-\frac1k}$ vs.\ $\log d$): a first reduction fails
+		\item<6-> More bits per round: double-lock in the QCT model, secure via post-measurement information \scite{BWW08,GW10}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Forrelation in the QCT model}
+	$k$-Forrelation: decide whether $\bra{0}HZ_{f_1}H\cdots HZ_{f_k}H\ket{0}$ is close to $0$ \scite{Aar10,AA15}.
+	\begin{itemize}
+		\item One-way protocol: Alice sends $\Zf{f_1}HZ_{g_2}Z_{f_2}H\cdots HZ_{g_k}Z_{f_k}H\ket{0}$ and $\operatorname{Enc}_{\key_{\text{weak}}}\left(g_1\right)$
+		\item Bob computes the overlap with $Z_{g_1}H\ket{0}$ and decides the secret bit
+		\item Hope: Eve needs $d^{1-\frac1k}$ classical bits, but each copy gives her only $\log d$ bits
+	\end{itemize}
+	\pause
+	\textcolor{red}{Issue} (found by Jeanne Lucas): Eve's information is about the \emph{state}, not the functions; once $g_1$ leaks, computing the overlap may be much easier $\implies$ the reduction does not hold.
+\end{frame}
+
+\begin{frame}[allowframebreaks]{Bibliography}
+	\printbibliography
+\end{frame}
+
+\end{document}
